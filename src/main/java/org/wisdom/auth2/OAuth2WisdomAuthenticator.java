@@ -1,13 +1,15 @@
 package org.wisdom.auth2;
 
-import org.apache.felix.ipojo.annotations.Component;
-import org.apache.felix.ipojo.annotations.Instantiate;
-import org.apache.felix.ipojo.annotations.Provides;
-import org.apache.felix.ipojo.annotations.Requires;
+import org.apache.felix.ipojo.annotations.*;
+import org.apache.oltu.oauth2.client.OAuthClient;
+import org.apache.oltu.oauth2.client.URLConnectionClient;
 import org.apache.oltu.oauth2.client.request.OAuthBearerClientRequest;
 import org.apache.oltu.oauth2.client.request.OAuthClientRequest;
-import org.apache.oltu.oauth2.client.validator.TokenValidator;
+import org.apache.oltu.oauth2.client.response.OAuthResourceResponse;
+import org.apache.oltu.oauth2.common.OAuth;
+import org.apache.oltu.oauth2.common.exception.OAuthProblemException;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
+import org.apache.oltu.oauth2.common.utils.JSONUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wisdom.api.cache.Cache;
@@ -16,10 +18,13 @@ import org.wisdom.api.http.Context;
 import org.wisdom.api.http.Result;
 import org.wisdom.api.security.Authenticator;
 
+import java.util.Map;
+
 @Component
 @Provides
 @Instantiate
 public class OAuth2WisdomAuthenticator implements Authenticator {
+
 
 
 	@Requires
@@ -30,45 +35,78 @@ public class OAuth2WisdomAuthenticator implements Authenticator {
 
 	public static final Logger LOGGER = LoggerFactory.getLogger(OAuth2WisdomAuthenticator.class);
 
+	private String userInfoURL;
+	private String loginPage;
+	private String loginCallback;
+	private String clientId;
+
 	@Override
 	public String getName() {
 		return "OAuth2";
 	}
 
+	@Validate
+	public void init() {
+		this.userInfoURL = configuration.get("oauth2.userinfo");
+		this.loginPage = configuration.get("oauth2.login");
+		this.loginCallback = configuration.get("oauth2.callback");
+		this.clientId = configuration.get("oauth2.clientId");
+	}
+
 	@Override
 	public String getUserName(Context context) {
 
-		String token = retrieveToken(context);
+		String accessToken = retrieveToken(context);
 
-		if(token==null)
+		if(accessToken==null)
 			return null;
-
-		//TokenValidator tokenValidator = new TokenValidator();
-		//tokenValidator.
 
 		try {
-			OAuthClientRequest bearerClientRequest =
-                    new OAuthBearerClientRequest("https://graph.facebook.com/me")
-                            .setAccessToken(token).buildQueryMessage();
-		} catch (OAuthSystemException e) {
-			LOGGER.warn("Boom", e);
-			return null;
+			return getEmail(accessToken);
+		} catch (OAuthSystemException | OAuthProblemException e) {
+			LOGGER.warn(e.getMessage(), e);
 		}
 
+		return null;
+	}
 
-		return context.cookieValue("email");
+	private String getEmail(String accessToken) throws OAuthSystemException, org.apache.oltu.oauth2.common.exception.OAuthProblemException {
+		OAuthClient oAuthClient = new OAuthClient(new URLConnectionClient());
+		OAuthBearerClientRequest authBearerClientRequest = new OAuthBearerClientRequest(userInfoURL);
+		OAuthClientRequest loginRequest = authBearerClientRequest.setAccessToken(accessToken).buildHeaderMessage();
+
+		OAuthResourceResponse resource = oAuthClient.resource(loginRequest, OAuth.HttpMethod.GET, OAuthResourceResponse.class);
+
+		Map<String, Object> parseJSON = JSONUtils.parseJSON(resource.getBody());
+
+		oAuthClient.shutdown();
+
+		return parseJSON.get("email").toString();
 	}
 
 	private String retrieveToken(Context context) {
-		String token = context.header("token");
-		if(token!=null){
-			token = context.parameter("token");
+		String token = context.header(OAuth.OAUTH_ACCESS_TOKEN);
+		if(token==null){
+			token = context.parameter(OAuth.OAUTH_ACCESS_TOKEN);
 		}
 		return token;
 	}
 
 	@Override
 	public Result onUnauthorized(Context context) {
+
+		try {
+			OAuthClientRequest request = OAuthClientRequest
+                    .authorizationLocation(loginPage)
+                    .setClientId(clientId)
+                    .setRedirectURI(loginCallback).setResponseType("code")
+                    .setScope("openid")
+                    .buildQueryMessage();
+			return new Result().redirect(request.getLocationUri());
+		} catch (OAuthSystemException e) {
+			new Result().status(500);
+		}
+
 		return new Result().redirect("/");
 	}
 }
