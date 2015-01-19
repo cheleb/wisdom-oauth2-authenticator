@@ -10,6 +10,7 @@ import org.apache.oltu.oauth2.common.OAuth;
 import org.apache.oltu.oauth2.common.exception.OAuthProblemException;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.apache.oltu.oauth2.common.utils.JSONUtils;
+import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wisdom.api.cache.Cache;
@@ -24,8 +25,6 @@ import java.util.Map;
 @Provides
 @Instantiate
 public class OAuth2WisdomAuthenticator implements Authenticator {
-
-
 
 	@Requires
 	ApplicationConfiguration configuration;
@@ -61,8 +60,18 @@ public class OAuth2WisdomAuthenticator implements Authenticator {
 		if(accessToken==null)
 			return null;
 
+		String email = (String) cache.get(accessToken);
+        if(email != null)
+			return email;
 		try {
-			return getEmail(accessToken);
+			email = getEmail(accessToken);
+			if(email==null){
+				LOGGER.warn("No email ?");
+				return null;
+			}
+			Long expireIn = Long.parseLong(context.parameter(OAuth.OAUTH_EXPIRES_IN));
+			cache.set(accessToken, email, Duration.standardSeconds(expireIn));
+			return email;
 		} catch (OAuthSystemException | OAuthProblemException e) {
 			LOGGER.warn(e.getMessage(), e);
 		}
@@ -72,16 +81,18 @@ public class OAuth2WisdomAuthenticator implements Authenticator {
 
 	private String getEmail(String accessToken) throws OAuthSystemException, org.apache.oltu.oauth2.common.exception.OAuthProblemException {
 		OAuthClient oAuthClient = new OAuthClient(new URLConnectionClient());
-		OAuthBearerClientRequest authBearerClientRequest = new OAuthBearerClientRequest(userInfoURL);
-		OAuthClientRequest loginRequest = authBearerClientRequest.setAccessToken(accessToken).buildHeaderMessage();
+		try {
+			OAuthBearerClientRequest authBearerClientRequest = new OAuthBearerClientRequest(userInfoURL);
+			OAuthClientRequest loginRequest = authBearerClientRequest.setAccessToken(accessToken).buildHeaderMessage();
 
-		OAuthResourceResponse resource = oAuthClient.resource(loginRequest, OAuth.HttpMethod.GET, OAuthResourceResponse.class);
+			OAuthResourceResponse resource = oAuthClient.resource(loginRequest, OAuth.HttpMethod.GET, OAuthResourceResponse.class);
 
-		Map<String, Object> parseJSON = JSONUtils.parseJSON(resource.getBody());
+			Map<String, Object> parseJSON = JSONUtils.parseJSON(resource.getBody());
+			return parseJSON.get("email").toString();
+		}finally {
+			oAuthClient.shutdown();
+		}
 
-		oAuthClient.shutdown();
-
-		return parseJSON.get("email").toString();
 	}
 
 	private String retrieveToken(Context context) {
@@ -98,6 +109,7 @@ public class OAuth2WisdomAuthenticator implements Authenticator {
 		try {
 			OAuthClientRequest request = OAuthClientRequest
                     .authorizationLocation(loginPage)
+					.setParameter(OAuth.OAUTH_EXPIRES_IN, "3600")
                     .setClientId(clientId)
                     .setRedirectURI(loginCallback).setResponseType("code")
                     .setScope("openid")

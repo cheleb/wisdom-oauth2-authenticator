@@ -41,6 +41,9 @@ public class CallbackController extends DefaultController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CallbackController.class);
 
+
+    private static final String REDIRECT_FORMAT = "%s?%s=%s&%s=%d";
+
     private String clientId;
     private String clientSecret ;
 
@@ -71,18 +74,10 @@ public class CallbackController extends DefaultController {
         OAuthClient oAuthClient = new OAuthClient(new URLConnectionClient());
         try {
             WisdomOAuthClientResponse oar = WisdomOAuthClientResponse.oauthCodeAuthzResponse(request());
-            String accessToken = getAccessToken(oar, oAuthClient);
 
-            OAuthBearerClientRequest authBearerClientRequest = new OAuthBearerClientRequest(userinfo);
-            OAuthClientRequest loginRequest = authBearerClientRequest.setAccessToken(accessToken).buildHeaderMessage();
+            OAuthJSONAccessTokenResponse accessTokenResponse = getAccessToken(oar, oAuthClient);
 
-            OAuthResourceResponse resource = oAuthClient.resource(loginRequest, OAuth.HttpMethod.GET, OAuthResourceResponse.class);
-
-            Map<String, Object> parseJSON = JSONUtils.parseJSON(resource.getBody());
-
-            session("email", (String) parseJSON.get("email"));
-
-            return redirect(redirectOnLogin + "?"+OAuth.OAUTH_ACCESS_TOKEN+"="+accessToken).with(OAuth.OAUTH_ACCESS_TOKEN, accessToken);
+            return redirect(String.format(REDIRECT_FORMAT, redirectOnLogin, OAuth.OAUTH_ACCESS_TOKEN, accessTokenResponse.getAccessToken(), OAuth.OAUTH_EXPIRES_IN, accessTokenResponse.getExpiresIn()));
 
         } catch (OAuthProblemException | OAuthSystemException e) {
             LOGGER.warn(e.getMessage(), e);
@@ -94,14 +89,15 @@ public class CallbackController extends DefaultController {
     }
 
 
-    private String getAccessToken(WisdomOAuthClientResponse oar, OAuthClient oAuthClient) throws OAuthSystemException, OAuthProblemException {
+    private OAuthJSONAccessTokenResponse getAccessToken(WisdomOAuthClientResponse oar, OAuthClient oAuthClient) throws OAuthSystemException, OAuthProblemException {
         String code = oar.getCode();
         OAuthClientRequest oAuthClientRequest = OAuthClientRequest.tokenLocation(tokenLocation)
                 .setGrantType(GrantType.AUTHORIZATION_CODE).setClientId(clientId).setClientSecret(clientSecret).setRedirectURI(loginCallback)
                 .setCode(code).buildQueryMessage();
 
         OAuthJSONAccessTokenResponse oAuthResponse = oAuthClient.accessToken(oAuthClientRequest, OAuthJSONAccessTokenResponse.class);
-        return oAuthResponse.getAccessToken();
+
+        return oAuthResponse;
     }
 
 
