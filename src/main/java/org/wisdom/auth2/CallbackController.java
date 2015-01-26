@@ -54,22 +54,19 @@ public class CallbackController extends DefaultController {
     private ApplicationConfiguration configuration;
     private String userinfo;
     private String tokenLocation;
-    private String redirectOnLogin;
 
     @Validate
     public void validate() {
         this.loginCallback = configuration.get("oauth2.callback");
         this.clientId = configuration.get("oauth2.clientId");
         this.clientSecret = configuration.get("oauth2.clientSecret");
-        this.userinfo = configuration.get("oauth2.userinfo");
+        this.userinfo = configuration.get("oauth2.userinfo.url");
         this.tokenLocation = configuration.get("oauth2.tokenLocation");
-        this.redirectOnLogin = configuration.get("oauth2.redirectOnLogin");
         init();
     }
 
     @Route(uri = "/cb", method = HttpMethod.GET)
-    public Result logincb(@QueryParameter("code") String code) {
-
+    public Result logincb(@QueryParameter("code") String code, @QueryParameter("state") String state  ) {
 
         OAuthClient oAuthClient = new OAuthClient(new URLConnectionClient());
         try {
@@ -77,7 +74,10 @@ public class CallbackController extends DefaultController {
 
             OAuthJSONAccessTokenResponse accessTokenResponse = getAccessToken(oar, oAuthClient);
 
-            return redirect(String.format(REDIRECT_FORMAT, redirectOnLogin, OAuth.OAUTH_ACCESS_TOKEN, accessTokenResponse.getAccessToken(), OAuth.OAUTH_EXPIRES_IN, accessTokenResponse.getExpiresIn()));
+            if(state==null){
+                return ok(accessTokenResponse.getAccessToken());
+            }
+            return redirect(String.format(REDIRECT_FORMAT, state, OAuth.OAUTH_ACCESS_TOKEN, accessTokenResponse.getAccessToken(), OAuth.OAUTH_EXPIRES_IN, accessTokenResponse.getExpiresIn()));
 
         } catch (OAuthProblemException | OAuthSystemException e) {
             LOGGER.warn(e.getMessage(), e);

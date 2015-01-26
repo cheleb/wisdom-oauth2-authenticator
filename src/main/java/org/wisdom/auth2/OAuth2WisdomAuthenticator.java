@@ -38,6 +38,8 @@ public class OAuth2WisdomAuthenticator implements Authenticator {
 	private String loginPage;
 	private String loginCallback;
 	private String clientId;
+	private String redirectOnLogin;
+	private String userInfoEmail;
 
 	@Override
 	public String getName() {
@@ -46,10 +48,12 @@ public class OAuth2WisdomAuthenticator implements Authenticator {
 
 	@Validate
 	public void init() {
-		this.userInfoURL = configuration.get("oauth2.userinfo");
+		this.userInfoURL = configuration.get("oauth2.userinfo.url");
+		this.userInfoEmail = configuration.get("oauth2.userinfo.email");
 		this.loginPage = configuration.get("oauth2.login");
 		this.loginCallback = configuration.get("oauth2.callback");
 		this.clientId = configuration.get("oauth2.clientId");
+		this.redirectOnLogin=configuration.get("oauth2.redirectOnLogin");
 	}
 
 	@Override
@@ -61,12 +65,14 @@ public class OAuth2WisdomAuthenticator implements Authenticator {
 			return null;
 
 		String email = (String) cache.get(accessToken);
-        if(email != null)
+        if(email != null){
+			LOGGER.info(email + " login");
 			return email;
+		}
 		try {
 			email = getEmail(accessToken);
 			if(email==null){
-				LOGGER.warn("No email ?");
+				LOGGER.warn("No email found ?");
 				return null;
 			}
 			Long expireIn = Long.parseLong(context.parameter(OAuth.OAUTH_EXPIRES_IN));
@@ -79,6 +85,13 @@ public class OAuth2WisdomAuthenticator implements Authenticator {
 		return null;
 	}
 
+	/**
+	 *
+	 * @param accessToken
+	 * @return
+	 * @throws OAuthSystemException
+	 * @throws org.apache.oltu.oauth2.common.exception.OAuthProblemException
+	 */
 	private String getEmail(String accessToken) throws OAuthSystemException, org.apache.oltu.oauth2.common.exception.OAuthProblemException {
 		OAuthClient oAuthClient = new OAuthClient(new URLConnectionClient());
 		try {
@@ -88,7 +101,23 @@ public class OAuth2WisdomAuthenticator implements Authenticator {
 			OAuthResourceResponse resource = oAuthClient.resource(loginRequest, OAuth.HttpMethod.GET, OAuthResourceResponse.class);
 
 			Map<String, Object> parseJSON = JSONUtils.parseJSON(resource.getBody());
-			return parseJSON.get("email").toString();
+			if(parseJSON==null){
+				LOGGER.warn("Could not retrieve userinfo from [" + userInfoURL + "]");
+				return null;
+			}
+
+			Object email = parseJSON.get(userInfoEmail);
+			if(email==null){
+				LOGGER.warn("Could not retrieve email from key: " + userInfoEmail );
+				if(LOGGER.isDebugEnabled()){
+					for (Map.Entry<String, Object> e : parseJSON.entrySet()) {
+						LOGGER.debug(e.getKey() + " -> " + e.getValue() );
+					}
+
+				}
+				return null;
+			}
+			return email.toString();
 		}finally {
 			oAuthClient.shutdown();
 		}
@@ -113,6 +142,7 @@ public class OAuth2WisdomAuthenticator implements Authenticator {
                     .setClientId(clientId)
                     .setRedirectURI(loginCallback).setResponseType("code")
                     .setScope("openid")
+					.setState(redirectOnLogin)
                     .buildQueryMessage();
 			return new Result().redirect(request.getLocationUri());
 		} catch (OAuthSystemException e) {
