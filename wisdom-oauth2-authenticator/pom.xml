@@ -53,53 +53,9 @@
 
     </dependencies>
 
-    <dependencyManagement>
-
-        <dependencies>
-
-            <dependency>
-                <!-- Define all the versions of the dependencies provided by Wisdom -->
-                <groupId>org.wisdom-framework</groupId>
-                <artifactId>wisdom-bom</artifactId>
-                <version>${wisdom.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-
-            <dependency>
-                <groupId>org.apache.oltu.oauth2</groupId>
-                <artifactId>org.apache.oltu.oauth2.client</artifactId>
-                <version>1.0.0</version>
-            </dependency>
-
-            <dependency>
-                <groupId>javax.servlet</groupId>
-                <artifactId>javax.servlet-api</artifactId>
-                <version>3.1.0</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.apache.servicemix.bundles</groupId>
-                <artifactId>org.apache.servicemix.bundles.json</artifactId>
-                <version>20140107_1</version>
-            </dependency>
-
-        </dependencies>
-
-    </dependencyManagement>
-
     <build>
 
         <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.2</version>
-                <configuration>
-                    <target>1.7</target>
-                    <source>1.7</source>
-                </configuration>
-            </plugin>
 
             <plugin>
                 <groupId>org.apache.felix</groupId>
@@ -110,14 +66,12 @@
                     <instructions>
                         <Bundle-Name>${project.artifactId}</Bundle-Name>
                         <Bundle-SymbolicName>${project.groupId}.${project.artifactId}</Bundle-SymbolicName>
-                        <Implementation-Title>Activiti Engine - OSGi</Implementation-Title>
+                        <Implementation-Title>${project.name} - OSGi</Implementation-Title>
                         <Implementation-Version>${project.version}</Implementation-Version>
                         <DynamicImport-Package>*</DynamicImport-Package>
-                        <Export-Package>org.wisdom.oauth2</Export-Package>
                     </instructions>
                 </configuration>
             </plugin>
-
 
             <plugin>
                 <groupId>org.wisdom-framework</groupId>
@@ -128,7 +82,6 @@
                     <disableDistributionPackaging>true</disableDistributionPackaging>
                 </configuration>
             </plugin>
-
 
         </plugins>
     </build>

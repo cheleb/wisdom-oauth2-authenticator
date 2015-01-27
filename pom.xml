@@ -13,6 +13,8 @@
     <properties>
         <wisdom.version>0.7.0</wisdom.version>
         <ipojo.version>1.12.1</ipojo.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
 
 
@@ -46,7 +48,6 @@
             <groupId>org.apache.servicemix.bundles</groupId>
             <artifactId>org.apache.servicemix.bundles.json</artifactId>
         </dependency>
-
 
         <dependency>
             <groupId>junit</groupId>
@@ -100,6 +101,7 @@
                 <configuration>
                     <target>1.7</target>
                     <source>1.7</source>
+                    <encoding>${project.build.sourceEncoding}</encoding>
                 </configuration>
             </plugin>
 
