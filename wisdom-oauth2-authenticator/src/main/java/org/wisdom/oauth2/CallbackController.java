@@ -1,4 +1,4 @@
-package org.wisdom.auth2;
+package org.wisdom.oauth2;
 
 import org.apache.felix.ipojo.annotations.Requires;
 import org.apache.felix.ipojo.annotations.Validate;
@@ -6,7 +6,6 @@ import org.apache.oltu.oauth2.client.OAuthClient;
 import org.apache.oltu.oauth2.client.URLConnectionClient;
 import org.apache.oltu.oauth2.client.request.OAuthBearerClientRequest;
 import org.apache.oltu.oauth2.client.request.OAuthClientRequest;
-import org.apache.oltu.oauth2.client.response.OAuthAuthzResponse;
 import org.apache.oltu.oauth2.client.response.OAuthJSONAccessTokenResponse;
 import org.apache.oltu.oauth2.client.response.OAuthResourceResponse;
 import org.apache.oltu.oauth2.common.OAuth;
@@ -14,6 +13,7 @@ import org.apache.oltu.oauth2.common.exception.OAuthProblemException;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.apache.oltu.oauth2.common.message.types.GrantType;
 import org.apache.oltu.oauth2.common.utils.JSONUtils;
+import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wisdom.api.DefaultController;
@@ -21,6 +21,7 @@ import org.wisdom.api.annotations.Controller;
 import org.wisdom.api.annotations.Path;
 import org.wisdom.api.annotations.QueryParameter;
 import org.wisdom.api.annotations.Route;
+import org.wisdom.api.cache.Cache;
 import org.wisdom.api.configuration.ApplicationConfiguration;
 import org.wisdom.api.http.HttpMethod;
 import org.wisdom.api.http.Result;
@@ -41,17 +42,23 @@ public class CallbackController extends DefaultController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CallbackController.class);
 
-
-    private static final String REDIRECT_FORMAT = "%s?%s=%s&%s=%d";
-
     private String clientId;
+
     private String clientSecret ;
 
     private String loginCallback;
 
+    private String userinfoURL;
+
+    private String userinfoEmail;
+
 
     @Requires
     private ApplicationConfiguration configuration;
+
+    @Requires
+    private Cache cache;
+
     private String userinfo;
     private String tokenLocation;
 
@@ -60,7 +67,8 @@ public class CallbackController extends DefaultController {
         this.loginCallback = configuration.get("oauth2.callback");
         this.clientId = configuration.get("oauth2.clientId");
         this.clientSecret = configuration.get("oauth2.clientSecret");
-        this.userinfo = configuration.get("oauth2.userinfo.url");
+        this.userinfoURL = configuration.get("oauth2.userinfo.url");
+        this.userinfoEmail = configuration.get("oauth2.userinfo.email");
         this.tokenLocation = configuration.get("oauth2.tokenLocation");
         init();
     }
@@ -74,10 +82,30 @@ public class CallbackController extends DefaultController {
 
             OAuthJSONAccessTokenResponse accessTokenResponse = getAccessToken(oar, oAuthClient);
 
-            if(state==null){
-                return ok(accessTokenResponse.getAccessToken());
+            String accessToken = accessTokenResponse.getAccessToken();
+
+
+            try {
+                String email = getEmail(accessToken);
+                if (email == null) {
+                    LOGGER.warn("No email found ?");
+                    return unauthorized();
+                }
+
+                cache.set(accessToken, email, Duration.standardSeconds(accessTokenResponse.getExpiresIn()));
+
+            } catch (OAuthSystemException | OAuthProblemException e) {
+                LOGGER.warn(e.getMessage(), e);
+                return unauthorized();
             }
-            return redirect(String.format(REDIRECT_FORMAT, state, OAuth.OAUTH_ACCESS_TOKEN, accessTokenResponse.getAccessToken(), OAuth.OAUTH_EXPIRES_IN, accessTokenResponse.getExpiresIn()));
+
+            session(OAuth.OAUTH_ACCESS_TOKEN, accessToken);
+            session(OAuth.OAUTH_EXPIRES_IN, String.valueOf(accessTokenResponse.getExpiresIn()));
+
+            if(state==null){
+                return ok(accessToken);
+            }
+            return redirect(state);
 
         } catch (OAuthProblemException | OAuthSystemException e) {
             LOGGER.warn(e.getMessage(), e);
@@ -127,4 +155,41 @@ public class CallbackController extends DefaultController {
         return;
     }
 
+    /**
+     * @param accessToken
+     * @return
+     * @throws OAuthSystemException
+     * @throws org.apache.oltu.oauth2.common.exception.OAuthProblemException
+     */
+    private String getEmail(String accessToken) throws OAuthSystemException, org.apache.oltu.oauth2.common.exception.OAuthProblemException {
+        OAuthClient oAuthClient = new OAuthClient(new URLConnectionClient());
+        try {
+            OAuthBearerClientRequest authBearerClientRequest = new OAuthBearerClientRequest(userinfoURL);
+            OAuthClientRequest loginRequest = authBearerClientRequest.setAccessToken(accessToken).buildHeaderMessage();
+
+            OAuthResourceResponse resource = oAuthClient.resource(loginRequest, OAuth.HttpMethod.GET, OAuthResourceResponse.class);
+
+            Map<String, Object> parseJSON = JSONUtils.parseJSON(resource.getBody());
+            if (parseJSON == null) {
+                LOGGER.warn("Could not retrieve userinfo from [" + userinfoURL + "]");
+                return null;
+            }
+
+            Object email = parseJSON.get(userinfoEmail);
+            if (email == null) {
+                LOGGER.warn("Could not retrieve email from key: " + userinfoEmail);
+                if (LOGGER.isDebugEnabled()) {
+                    for (Map.Entry<String, Object> e : parseJSON.entrySet()) {
+                        LOGGER.debug(e.getKey() + " -> " + e.getValue());
+                    }
+
+                }
+                return null;
+            }
+            return email.toString();
+        } finally {
+            oAuthClient.shutdown();
+        }
+
+    }
 }

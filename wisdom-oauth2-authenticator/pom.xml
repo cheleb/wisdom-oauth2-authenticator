@@ -2,24 +2,22 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>org.wisdom-framework.oauth2</groupId>
-    <artifactId>wisdom-oauth2</artifactId>
-    <version>1.0-SNAPSHOT</version>
+		<parent>
+	    <groupId>org.wisdom-framework.oauth2</groupId>
+			<artifactId>wisdom-oauth2</artifactId>
+		  <version>1.0-SNAPSHOT</version>
+    </parent>
 
-    <packaging>pom</packaging>
+    <artifactId>wisdom-oauth2-authenticator</artifactId>
+    
+    <packaging>wisdom</packaging>
 
-    <name>Wisdomo OAuth2</name>
+    <name>wisdom-oauth2-authenticator</name>
 
     <properties>
         <wisdom.version>0.7.0</wisdom.version>
-        <ipojo.version>1.12.1</ipojo.version>
     </properties>
 
-
-    <modules>
-      <module>wisdom-oauth2-authenticator</module>
-      <module>wisdom-oauth2-controller</module>
-    </modules>
 
     <dependencies>
         <dependency>
@@ -102,6 +100,35 @@
                     <source>1.7</source>
                 </configuration>
             </plugin>
+
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+                <version>2.3.4</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <instructions>
+                        <Bundle-Name>${project.artifactId}</Bundle-Name>
+                        <Bundle-SymbolicName>${project.groupId}.${project.artifactId}</Bundle-SymbolicName>
+                        <Implementation-Title>Activiti Engine - OSGi</Implementation-Title>
+                        <Implementation-Version>${project.version}</Implementation-Version>
+                        <DynamicImport-Package>*</DynamicImport-Package>
+                        <Export-Package>org.wisdom.oauth2</Export-Package>
+                    </instructions>
+                </configuration>
+            </plugin>
+
+
+            <plugin>
+                <groupId>org.wisdom-framework</groupId>
+                <artifactId>wisdom-maven-plugin</artifactId>
+                <version>${wisdom.version}</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <disableDistributionPackaging>true</disableDistributionPackaging>
+                </configuration>
+            </plugin>
+
 
         </plugins>
     </build>
