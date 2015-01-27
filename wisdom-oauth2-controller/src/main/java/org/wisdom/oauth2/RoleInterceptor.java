@@ -3,6 +3,7 @@ package org.wisdom.oauth2;
 import org.apache.felix.ipojo.annotations.Component;
 import org.apache.felix.ipojo.annotations.Instantiate;
 import org.apache.felix.ipojo.annotations.Provides;
+import org.apache.felix.ipojo.annotations.Requires;
 import org.wisdom.api.http.Result;
 import org.wisdom.api.http.Status;
 import org.wisdom.api.interception.Interceptor;
@@ -17,12 +18,14 @@ import java.util.Set;
 @Provides(specifications = Interceptor.class)
 @Instantiate
 public class RoleInterceptor extends Interceptor<Role> {
+
+    @Requires
+    AuthorityProvider authorityProvider;
+
     @Override
     public Result call(Role configuration, RequestContext context) throws Exception {
-        Object rolesAsO = context.data().get("roles");
-        if (rolesAsO == null)
-            return new Result().status(Status.FORBIDDEN);
-        Set<String> roles = (Set<String>) rolesAsO;
+
+        Set<String> roles = authorityProvider.getAuthority(context.request().username());
         if (roles.contains(configuration.value()))
             return context.proceed();
         return new Result().status(Status.FORBIDDEN);
