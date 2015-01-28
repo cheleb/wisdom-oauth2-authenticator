@@ -12,6 +12,6 @@ public interface AuthorityProvider {
 
     Set<String> getAuthority(String userId);
 
-    Result handle(Request request);
+    Result handle(Request request, Set<String> roles);
 
 }
