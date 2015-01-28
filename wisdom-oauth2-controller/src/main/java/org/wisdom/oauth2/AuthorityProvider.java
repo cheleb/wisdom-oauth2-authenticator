@@ -2,6 +2,7 @@ package org.wisdom.oauth2;
 
 import org.wisdom.api.http.Request;
 import org.wisdom.api.http.Result;
+import org.wisdom.api.interception.RequestContext;
 
 import java.util.Set;
 
@@ -12,6 +13,6 @@ public interface AuthorityProvider {
 
     Set<String> getAuthority(String userId);
 
-    Result handle(Request request, Set<String> roles);
+    Result handle(RequestContext request, Set<String> roles);
 
 }

@@ -27,9 +27,12 @@ public class RoleInterceptor extends Interceptor<Role> {
 
         Set<String> roles = authorityProvider.getAuthority(context.request().username());
         if (roles.contains(configuration.value())) {
-            Result redirect = authorityProvider.handle(context.request(), roles);
-            if(redirect==null)
-               return context.proceed();
+            Result redirect = authorityProvider.handle(context, roles);
+            if(redirect==null) {
+                return context.proceed();
+            }
+            return redirect;
+
         }
         return new Result().status(Status.FORBIDDEN);
     }
