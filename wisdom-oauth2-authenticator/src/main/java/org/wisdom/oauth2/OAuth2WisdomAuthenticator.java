@@ -83,7 +83,7 @@ public class OAuth2WisdomAuthenticator implements Authenticator {
 
         String state;
         if (context.route().getHttpMethod() == HttpMethod.GET) {
-            state = context.route().getUrl();
+            state = context.request().path();
         } else {
             state = authenticated;
         }
