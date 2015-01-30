@@ -1,4 +1,4 @@
-package org.wisdom.oauth2;
+package org.wisdom.oauth2.controller;
 
 import org.wisdom.api.http.Request;
 import org.wisdom.api.http.Result;

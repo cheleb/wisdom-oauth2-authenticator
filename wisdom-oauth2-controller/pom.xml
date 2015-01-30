@@ -68,7 +68,7 @@
                         <Implementation-Title>${project.name} - OSGi</Implementation-Title>
                         <Implementation-Version>${project.version}</Implementation-Version>
                         <DynamicImport-Package>*</DynamicImport-Package>
-                        <Export-Package>org.wisdom.oauth2</Export-Package>
+                        <Export-Package>org.wisdom.oauth2.controller</Export-Package>
                     </instructions>
                 </configuration>
             </plugin>

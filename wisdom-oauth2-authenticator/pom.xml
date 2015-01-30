@@ -20,6 +20,13 @@
 
 
     <dependencies>
+
+        <dependency>
+            <groupId>org.wisdom-framework.oauth2</groupId>
+            <artifactId>wisdom-oauth2-controller</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>org.apache.felix</groupId>
             <artifactId>org.apache.felix.ipojo.annotations</artifactId>

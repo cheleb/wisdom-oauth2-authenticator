@@ -1,4 +1,4 @@
-package org.wisdom.oauth2;
+package org.wisdom.oauth2.controller;
 
 import org.apache.felix.ipojo.annotations.Component;
 import org.apache.felix.ipojo.annotations.Instantiate;

@@ -1,7 +1,6 @@
-package org.wisdom.oauth2;
+package org.wisdom.oauth2.controller;
 
 import org.apache.felix.ipojo.annotations.Component;
-import org.apache.felix.ipojo.annotations.Requires;
 import org.apache.oltu.oauth2.common.OAuth;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
