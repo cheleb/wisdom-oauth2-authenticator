@@ -4,6 +4,7 @@ import org.apache.felix.ipojo.annotations.*;
 import org.apache.oltu.oauth2.client.request.OAuthClientRequest;
 import org.apache.oltu.oauth2.common.OAuth;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
+import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wisdom.api.cache.Cache;
@@ -12,6 +13,8 @@ import org.wisdom.api.http.Context;
 import org.wisdom.api.http.HttpMethod;
 import org.wisdom.api.http.Result;
 import org.wisdom.api.security.Authenticator;
+import org.wisdom.oauth2.controller.UserDetails;
+import org.wisdom.oauth2.controller.UserDetailsProvider;
 
 @Component
 @Provides
@@ -25,6 +28,9 @@ public class OAuth2WisdomAuthenticator implements Authenticator {
 
     @Requires
     private Cache cache;
+
+    @Requires
+    private UserDetailsProvider userDetailsProvider;
 
     public static final Logger LOGGER = LoggerFactory.getLogger(OAuth2WisdomAuthenticator.class);
 
@@ -60,9 +66,13 @@ public class OAuth2WisdomAuthenticator implements Authenticator {
             context.request().setUsername(email);
             return email;
         }
+        UserDetails userDetails = userDetailsProvider.getUserDetails(accessToken);
+        if (userDetails == null){
+            return null;
+        }
+        cache.set(accessToken,userDetails.getEmail(), Duration.standardHours(12));
 
-
-        return null;
+        return userDetails.getEmail();
     }
 
 
