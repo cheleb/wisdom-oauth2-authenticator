@@ -68,7 +68,7 @@ public class OAuth2WisdomAuthenticator implements Authenticator {
 
         String email = (String) cache.get(accessToken);
         if (email != null) {
-            LOGGER.info(email + " login");
+            LOGGER.debug(email + " login");
             context.request().setUsername(email);
             return email;
         }
