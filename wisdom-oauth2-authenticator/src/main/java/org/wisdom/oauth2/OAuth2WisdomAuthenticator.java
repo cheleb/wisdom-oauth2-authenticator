@@ -38,6 +38,8 @@ public class OAuth2WisdomAuthenticator implements Authenticator {
     private String loginCallback;
     private String clientId;
     private String authenticated;
+    private String expireIn;
+    private String scope;
 
     @Override
     public String getName() {
@@ -50,6 +52,10 @@ public class OAuth2WisdomAuthenticator implements Authenticator {
         this.loginCallback = configuration.get("oauth2.callback");
         this.clientId = configuration.get("oauth2.clientId");
         this.authenticated = configuration.get("oauth2.authenticated");
+        this.expireIn = configuration.get("oauth2.expire_in");
+        this.scope = configuration.get("oauth2.scope");
+        if(scope==null)
+            scope="openid";
     }
 
     @Override
@@ -76,7 +82,6 @@ public class OAuth2WisdomAuthenticator implements Authenticator {
     }
 
 
-
     private String retrieveToken(Context context) {
 
         String token = context.session().get(OAuth.OAUTH_ACCESS_TOKEN);
@@ -99,14 +104,17 @@ public class OAuth2WisdomAuthenticator implements Authenticator {
         }
 
         try {
-            OAuthClientRequest request = OAuthClientRequest
+            OAuthClientRequest.AuthenticationRequestBuilder builder = OAuthClientRequest
                     .authorizationLocation(loginPage)
-                    .setParameter(OAuth.OAUTH_EXPIRES_IN, "3600")
                     .setClientId(clientId)
                     .setRedirectURI(loginCallback).setResponseType("code")
-                    .setScope("openid")
-                    .setState(state)
-                    .buildQueryMessage();
+                    .setScope(scope)
+                    .setState(state);
+            if (expireIn != null)
+                builder.setParameter(OAuth.OAUTH_EXPIRES_IN, expireIn);
+
+
+            OAuthClientRequest request = builder.buildQueryMessage();
             return new Result().redirect(request.getLocationUri());
         } catch (OAuthSystemException e) {
             new Result().status(500);
