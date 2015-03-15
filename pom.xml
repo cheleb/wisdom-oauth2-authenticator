@@ -11,7 +11,7 @@
     <name>Wisdomo OAuth2</name>
 
     <properties>
-        <wisdom.version>0.7.0</wisdom.version>
+        <wisdom.version>0.8.0</wisdom.version>
         <ipojo.version>1.12.1</ipojo.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
