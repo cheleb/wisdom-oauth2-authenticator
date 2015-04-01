@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
  * Created by cheleb on 27/01/15.
  */
 @Interception
-@Target({ElementType.METHOD, ElementType.TYPE})
+@Target({ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Role {
     String value();
